@@ -28,11 +28,13 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.media.MediaBrowserServiceCompat
-import com.example.android.uamp.common.MediaSessionConnection.MediaBrowserConnectionCallback
+import com.example.android.uamp.common.MusicServiceConnection.MediaBrowserConnectionCallback
 import com.example.android.uamp.media.NETWORK_FAILURE
+import com.example.android.uamp.media.extensions.id
 
 /**
- * Class that manages a connection to a [MediaBrowserServiceCompat] instance.
+ * Class that manages a connection to a [MediaBrowserServiceCompat] instance, typically a
+ * [MusicService] or one of its subclasses.
  *
  * Typically it's best to construct/inject dependencies either using DI or, as UAMP does,
  * using [InjectorUtils] in the app module. There are a few difficulties for that here:
@@ -45,11 +47,11 @@ import com.example.android.uamp.media.NETWORK_FAILURE
  *  Because of these reasons, rather than constructing additional classes, this is treated as
  *  a black box (which is why there's very little logic here).
  *
- *  This is also why the parameters to construct a [MediaSessionConnection] are simple
+ *  This is also why the parameters to construct a [MusicServiceConnection] are simple
  *  parameters, rather than private properties. They're only required to build the
  *  [MediaBrowserConnectionCallback] and [MediaBrowserCompat] objects.
  */
-class MediaSessionConnection(context: Context, serviceComponent: ComponentName) {
+class MusicServiceConnection(context: Context, serviceComponent: ComponentName) {
     val isConnected = MutableLiveData<Boolean>()
         .apply { postValue(false) }
     val networkFailure = MutableLiveData<Boolean>()
@@ -82,7 +84,7 @@ class MediaSessionConnection(context: Context, serviceComponent: ComponentName) 
     }
 
     fun sendCommand(command: String, parameters: Bundle?) =
-            sendCommand(command, parameters) { _, _ -> }
+        sendCommand(command, parameters) { _, _ -> }
 
     fun sendCommand(
         command: String,
@@ -136,7 +138,17 @@ class MediaSessionConnection(context: Context, serviceComponent: ComponentName) 
         }
 
         override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
-            nowPlaying.postValue(metadata ?: NOTHING_PLAYING)
+            // When ExoPlayer stops we will receive a callback with "empty" metadata. This is a
+            // metadata object which has been instantiated with default values. The default value
+            // for media ID is null so we assume that if this value is null we are not playing
+            // anything.
+            nowPlaying.postValue(
+                if (metadata?.id == null) {
+                    NOTHING_PLAYING
+                } else {
+                    metadata
+                }
+            )
         }
 
         override fun onQueueChanged(queue: MutableList<MediaSessionCompat.QueueItem>?) {
@@ -163,11 +175,11 @@ class MediaSessionConnection(context: Context, serviceComponent: ComponentName) 
     companion object {
         // For Singleton instantiation.
         @Volatile
-        private var instance: MediaSessionConnection? = null
+        private var instance: MusicServiceConnection? = null
 
         fun getInstance(context: Context, serviceComponent: ComponentName) =
             instance ?: synchronized(this) {
-                instance ?: MediaSessionConnection(context, serviceComponent)
+                instance ?: MusicServiceConnection(context, serviceComponent)
                     .also { instance = it }
             }
     }
@@ -183,4 +195,3 @@ val NOTHING_PLAYING: MediaMetadataCompat = MediaMetadataCompat.Builder()
     .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, "")
     .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 0)
     .build()
-

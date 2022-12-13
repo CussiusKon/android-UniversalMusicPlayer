@@ -47,8 +47,8 @@ android {
 
 dependencies {
     api "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlin_coroutines"
-    api "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlin_coroutines"
+    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlin_coroutines_version"
+    api "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlin_coroutines_version"
 
     api "androidx.media:media:$androidx_media_version"
 
@@ -64,10 +64,12 @@ dependencies {
         api project(':exoplayer-library-core')
         api project(':exoplayer-library-ui')
         api project(':exoplayer-extension-mediasession')
+        api project(':exoplayer-extension-cast')
     } else {
         api "com.google.android.exoplayer:exoplayer-core:$exoplayer_version"
         api "com.google.android.exoplayer:exoplayer-ui:$exoplayer_version"
         api "com.google.android.exoplayer:extension-mediasession:$exoplayer_version"
+        api "com.google.android.exoplayer:extension-cast:$exoplayer_version"
     }
 
     // Glide dependencies

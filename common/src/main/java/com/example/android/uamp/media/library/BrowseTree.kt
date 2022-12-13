@@ -54,11 +54,15 @@ import com.example.android.uamp.media.extensions.urlEncoded
  *  `browseTree["Album_A"]` would return "Song_1" and "Song_2". Since those are leaf nodes,
  *  requesting `browseTree["Song_1"]` would return null (there aren't any children of it).
  */
-class BrowseTree(context: Context, musicSource: MusicSource) {
+class BrowseTree(
+    val context: Context,
+    musicSource: MusicSource,
+    val recentMediaId: String? = null
+) {
     private val mediaIdToChildren = mutableMapOf<String, MutableList<MediaMetadataCompat>>()
 
     /**
-     * Whether to allow clients which are unknown (non-whitelisted) to use search on this
+     * Whether to allow clients which are unknown (not on the allowed list) to use search on this
      * [BrowseTree].
      */
     val searchableByUnknownCaller = true
@@ -77,7 +81,7 @@ class BrowseTree(context: Context, musicSource: MusicSource) {
         val recommendedMetadata = MediaMetadataCompat.Builder().apply {
             id = UAMP_RECOMMENDED_ROOT
             title = context.getString(R.string.recommended_title)
-            albumArtUri = imageUriRoot +
+            albumArtUri = RESOURCE_ROOT_URI +
                     context.resources.getResourceEntryName(R.drawable.ic_recommended)
             flag = MediaBrowserCompat.MediaItem.FLAG_BROWSABLE
         }.build()
@@ -85,7 +89,8 @@ class BrowseTree(context: Context, musicSource: MusicSource) {
         val albumsMetadata = MediaMetadataCompat.Builder().apply {
             id = UAMP_ALBUMS_ROOT
             title = context.getString(R.string.albums_title)
-            albumArtUri = imageUriRoot + context.resources.getResourceEntryName(R.drawable.ic_album)
+            albumArtUri = RESOURCE_ROOT_URI +
+                    context.resources.getResourceEntryName(R.drawable.ic_album)
             flag = MediaBrowserCompat.MediaItem.FLAG_BROWSABLE
         }.build()
 
@@ -99,11 +104,16 @@ class BrowseTree(context: Context, musicSource: MusicSource) {
             albumChildren += mediaItem
 
             // Add the first track of each album to the 'Recommended' category
-            if (mediaItem.trackNumber == 1L){
+            if (mediaItem.trackNumber == 1L) {
                 val recommendedChildren = mediaIdToChildren[UAMP_RECOMMENDED_ROOT]
-                                        ?: mutableListOf()
+                    ?: mutableListOf()
                 recommendedChildren += mediaItem
                 mediaIdToChildren[UAMP_RECOMMENDED_ROOT] = recommendedChildren
+            }
+
+            // If this was recently played, add it to the recent root.
+            if (mediaItem.id == recentMediaId) {
+                mediaIdToChildren[UAMP_RECENT_ROOT] = mutableListOf(mediaItem)
             }
         }
     }
@@ -120,7 +130,7 @@ class BrowseTree(context: Context, musicSource: MusicSource) {
      * marking the item as [MediaItem.FLAG_BROWSABLE], since it will have child
      * node(s) AKA at least 1 song.
      */
-    private fun buildAlbumRoot(mediaItem: MediaMetadataCompat) : MutableList<MediaMetadataCompat> {
+    private fun buildAlbumRoot(mediaItem: MediaMetadataCompat): MutableList<MediaMetadataCompat> {
         val albumMetadata = MediaMetadataCompat.Builder().apply {
             id = mediaItem.album.urlEncoded
             title = mediaItem.album
@@ -137,7 +147,7 @@ class BrowseTree(context: Context, musicSource: MusicSource) {
 
         // Insert the album's root with an empty list for its children, and return the list.
         return mutableListOf<MediaMetadataCompat>().also {
-            mediaIdToChildren[albumMetadata.id] = it
+            mediaIdToChildren[albumMetadata.id!!] = it
         }
     }
 }
@@ -146,7 +156,8 @@ const val UAMP_BROWSABLE_ROOT = "/"
 const val UAMP_EMPTY_ROOT = "@empty@"
 const val UAMP_RECOMMENDED_ROOT = "__RECOMMENDED__"
 const val UAMP_ALBUMS_ROOT = "__ALBUMS__"
+const val UAMP_RECENT_ROOT = "__RECENT__"
 
 const val MEDIA_SEARCH_SUPPORTED = "android.media.browse.SEARCH_SUPPORTED"
 
-const val imageUriRoot = "android.resource://com.example.android.uamp.next/drawable/"
+const val RESOURCE_ROOT_URI = "android.resource://com.example.android.uamp.next/drawable/"
